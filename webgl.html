@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo hoạt họa quay xúc xắc</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 500px;
+            background-color: white;
+        }
+        #rollButton {
+            position: absolute;
+            height: 50px;
+            width: 100px;
+            bottom: 20px;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s;
+            background-color: rgb(176, 176, 176);
+        }
+        #rollButton:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <canvas id="rollButton"></canvas> 
+
+    <script>
+        // --- 1. CÁC BIẾN TOÀN CỤC VÀ THIẾT LẬP CẢNH ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        //{ antialias: true }: giúp hình ảnh xúc xắc trông sắc nét và chuyên nghiệp hơn.
+        let quay = false;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+        const tocquay = 0.03; 
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        renderer.setClearColor(0xffffff, 1);
+
+        const size = 1.5;
+        const halfSize = size / 2;
+        const dotRadius = size * 0.1; 
+        const dotDosau = size * 0.05; 
+        const khoangcach = size * 0.35;
+        const inset = dotDosau / 2; //hiển thị 1/2 chiều sâu của chấm đen
+
+        // --- 2. ĐINH KHUNG CHO XÚC XẮC VÀ CHẤM ĐEN ---
+        const diceMaterial = new THREE.MeshLambertMaterial({ color: 0xcc0000 });
+        const dotMaterial = new THREE.MeshLambertMaterial({ color: 0x000000 });
+        
+        const diceGeometry = new THREE.BoxGeometry(size, size, size);// tọa độ hình lập phương
+        const xucxac = new THREE.Mesh(diceGeometry, diceMaterial);
+        scene.add(xucxac);
+
+        const dotChamden = new THREE.SphereGeometry(dotRadius, 320, 320); 
+
+        // Hàm giúp tạo và đặt chấm (dot)
+        function createDot(x, y, z, matchamden) { 
+            const dot = new THREE.Mesh(dotChamden, dotMaterial);
+            
+            let scaleX = 1, scaleY = 1, scaleZ = 1;// tỉ lệ theo từng trục
+            const scaleFactor = dotDosau / dotRadius; // làm hình cầu dẹp
+
+            if (matchamden === '+X' || matchamden === '-X') { //để xác định trục nào vuông góc với mặt xúc xắc và áp dụng làm dẹp.
+                scaleX = scaleFactor; // theo tỉ lệ 
+            } else if (matchamden === '+Y' || matchamden === '-Y') {
+                scaleY = scaleFactor; 
+            } else { 
+                scaleZ = scaleFactor;
+            }
+            
+            dot.scale.set(scaleX, scaleY, scaleZ);
+            dot.position.set(x, y, z);
+            return dot;
+        }
+
+        // --- 3. TẠO CÁC CHẤM ĐEN ---
+
+        // MẶT DƯƠNG X (Mặt 1)
+        xucxac.add(createDot(halfSize - inset, 0, 0, '+X'));//Tọa độ X: halfSize - inset.Tọa độ Y, Z: 0, 0 (Chính giữa mặt).Hướng (matxucxac): '+X' (Chấm đen theo X).
+        // MẶT ÂM X (Mặt 6)
+        // Hàng 1
+        xucxac.add(createDot(-halfSize + inset, khoangcach, khoangcach, '-X')); // Góc trên, sau, -halfSize + inset (Đặt tâm chấm lùi vào, sát mặt Âm X).
+        xucxac.add(createDot(-halfSize + inset, khoangcach, 0, '-X'));         // Cạnh trên, giữa
+        xucxac.add(createDot(-halfSize + inset, khoangcach, -khoangcach, '-X')); // Góc trên, trước
+
+        // Hàng 3 
+        xucxac.add(createDot(-halfSize + inset, -khoangcach, khoangcach, '-X')); // Góc dưới, sau
+        xucxac.add(createDot(-halfSize + inset, -khoangcach, 0, '-X'));         // Cạnh dưới, giữa
+        xucxac.add(createDot(-halfSize + inset, -khoangcach, -khoangcach, '-X')); // Góc dưới, trước
+        // MẶT DƯƠNG Y (Mặt 2)
+        xucxac.add(createDot( khoangcach, halfSize - inset, -khoangcach, '+Y'));// Góc trên-trước (X dương, Z âm)
+        xucxac.add(createDot(-khoangcach, halfSize - inset,  khoangcach, '+Y'));// Góc dưới-sau (X âm, Z dương)
+        // MẶT ÂM Y (Mặt 5)
+        xucxac.add(createDot( 0, -halfSize + inset, 0, '-Y')); // Chấm giữa (Tâm 0, 0)
+        xucxac.add(createDot( khoangcach, -halfSize + inset,  khoangcach, '-Y'));
+        xucxac.add(createDot( khoangcach, -halfSize + inset, -khoangcach, '-Y'));
+        xucxac.add(createDot(-khoangcach, -halfSize + inset,  khoangcach, '-Y'));
+        xucxac.add(createDot(-khoangcach, -halfSize + inset, -khoangcach, '-Y'));
+        // MẶT DƯƠNG Z (Mặt 3)
+        xucxac.add(createDot( 0, 0, halfSize - inset, '+Z')); 
+        xucxac.add(createDot( khoangcach, khoangcach, halfSize - inset, '+Z'));
+        xucxac.add(createDot(-khoangcach, -khoangcach, halfSize - inset, '+Z'));
+        // MẶT ÂM Z (Mặt 4)
+        xucxac.add(createDot( khoangcach, khoangcach, -halfSize + inset, '-Z'));
+        xucxac.add(createDot( khoangcach, -khoangcach, -halfSize + inset, '-Z'));
+        xucxac.add(createDot(-khoangcach, khoangcach, -halfSize + inset, '-Z'));
+        xucxac.add(createDot(-khoangcach, -khoangcach, -halfSize + inset, '-Z'));
+
+
+        // --- 4. ÁNH SÁNG VÀ CAMERA ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);//AmbientLight là lớp trong Three.js, 0xffffff màu trắng, 0.7: độ sáng 70%
+        scene.add(ambientLight);
+        const pointLight1 = new THREE.PointLight(0xffffff, 1.5);
+        pointLight1.position.set(5, 5, 5);
+        scene.add(pointLight1);
+        const pointLight2 = new THREE.PointLight(0xffffff, 1.0);
+        pointLight2.position.set(-5, -5, -5);
+        scene.add(pointLight2);
+        const pointLight3 = new THREE.PointLight(0xffffff, 0.8);
+        scene.add(camera);
+        camera.add(pointLight3);//thêm vào Camera, nghĩa là nó luôn chiếu sáng bất kể camera hướng về đâu, đảm bảo không quá tối.
+
+        camera.position.z = 4;//Di chuyển camera ra xa 4 đơn vị theo trục Z. Điều này đảm bảo khối xúc xắc (nằm ở tâm z=0) không quá gần màn hình.
+
+
+        // --- 5. LOGIC QUAY XÚC XẮC ---
+        const PI_90 = Math.PI / 2;//hành động xoay góc pi/2
+        const PI_180 = Math.PI;//hành động xoay góc pi
+        function getRandomRotation() {
+            if (quay) return; // Không quay nếu đang quay
+            // 1. Chọn ngẫu nhiên một trong 6 mặt (1-6)
+            const kq = Math.floor(Math.random() * 6) + 1; 
+            // 2. Tính toán góc quay đích (rx, ry)
+            let rx = 0; 
+            let ry = 0; 
+            // Thêm một vòng quay ngẫu nhiên 90 độ quanh Y để xoay ngẫu nhiên mặt xung quanh
+            const randomRotationTurn = Math.floor(Math.random() * 4) * PI_90; 
+
+            switch (kq) {
+                case 1: // Mặt 1 (+X)
+                    rx = PI_90; 
+                    ry = randomRotationTurn;//Quay 90 độ quanh X để lật Mặt 1 lên.
+                    break;
+                case 6: // Mặt 6 (-X)
+                    rx = -PI_90; 
+                    ry = randomRotationTurn;//Quay -90 độ quanh X để lật Mặt 6 lên.
+                    break;
+                case 2: // Mặt 2 (+Y)
+                    rx = 0; 
+                    ry = randomRotationTurn; //Mặt 2 đã ở trên, không cần lật X.
+                    break;
+                case 5: // Mặt 5 (-Y)
+                    rx = PI_180; 
+                    ry = randomRotationTurn; //Quay 180 độ quanh X để lật Mặt 5 lên.
+                    break;
+                case 3: // Mặt 3 (+Z)
+                    rx = -PI_90; 
+                    ry = randomRotationTurn;//Quay -90 độ quanh X để lật Mặt 3 lên.
+                    break;
+                case 4: // Mặt 4 (-Z)
+                    rx = PI_90; 
+                    ry = randomRotationTurn;//Quay 90 độ quanh X để lật Mặt 4 lên.
+                    break;
+            }
+            
+            // số vòng quay
+            const sovongquay = 5 * Math.PI * 2; // 5 vòng quay phụ
+
+            // Đặt góc quay mục tiêu: Góc hiện tại + Vòng quay phụ + Góc đích
+            targetRotationX = xucxac.rotation.x + sovongquay + rx;
+            targetRotationY = xucxac.rotation.y + sovongquay + ry;
+            quay = true;
+            console.log(`Kết quả: ${kq}`);
+            
+            // Tắt nút khi đang quay
+            document.getElementById('rollButton').disabled = true;
+            
+        }
+
+        // --- 6. XỬ LÝ CLICK NÚT ---
+        
+        // Lấy nút HTML
+        const rollButton = document.getElementById('rollButton');
+
+        // Gắn sự kiện click vào nút
+        rollButton.addEventListener('click', getRandomRotation, false);
+
+        // --- 7. VÒNG LẶP HOẠT ẢNH (ANIMATION LOOP) ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (quay) {
+                // Quay dần đến vị trí mục tiêu 
+                xucxac.rotation.x += (targetRotationX - xucxac.rotation.x) * tocquay;
+                xucxac.rotation.y += (targetRotationY - xucxac.rotation.y) * tocquay;
+
+                // Kiểm tra nếu gần vị trí đích thì dừng lại trong animate không âm 
+                const diffX = Math.abs(targetRotationX - xucxac.rotation.x);
+                const diffY = Math.abs(targetRotationY - xucxac.rotation.y);
+                
+                if (diffX < 0.01 && diffY < 0.01) { // khi dưới 0,01 thì dừng lại
+                    // Cố định góc quay để khớp hoàn hảo với lưới 90 độ
+                    xucxac.rotation.x = targetRotationX;
+                    xucxac.rotation.y = targetRotationY;
+                    quay = false;// làm ngừng chạy 
+                    console.log("Xúc xắc đã dừng.");
+                    
+                    // Bật lại nút sau khi dừng
+                    rollButton.disabled = false;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();// khởi động vòng lặp
+
+        // XỬ LÝ THAY ĐỔI KÍCH THƯỚC CỬA SỔ
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
